@@ -1,3 +1,5 @@
+## Voltaire
+
 ## Environment
 The project was built within an Anaconda environment, type this to collect the dependencies:
 
