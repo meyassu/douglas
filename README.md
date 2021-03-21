@@ -25,5 +25,6 @@ python3 voltaire.py
 Cool sci-fi autocomplete program: https://www.robinsloan.com/notes/writing-with-the-machine/
 
 ## Resources:
-Kaggle: Beginner's Guide to Text Generation with Pytorch (https://www.kaggle.com/ab971631/beginners-guide-to-text-generation-pytorch)
+Kaggle: Beginner's Guide to Text Generation with Pytorch 
+(https://www.kaggle.com/ab971631/beginners-guide-to-text-generation-pytorch)
 
