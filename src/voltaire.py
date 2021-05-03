@@ -1,4 +1,3 @@
-from tika import parser
 import re
 import nltk
 from nltk import sent_tokenize, word_tokenize
@@ -8,19 +7,47 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+print(device)
 # Hyperparameters
 torch.manual_seed(42)
 EMBEDDING_DIM = 64
 HIDDEN_DIM = 64
 # LAYERS = ?
 
-def load_data(fpath):
+def load_checkpoint(checkpoint_fpath, model, optimizer):
 	"""
-	Returns the entire corpus as a corpus
-	"""
+	Loads checkpoint.
 
-	return parser.from_file(fpath)["content"]
+	:param checkpoint_fpath: (str) -> the filepath to the checkpoint
+	:param model: (torch.LSTM) -> the model
+	:param optimizer: (torch.optimizer) -> the optimizer
+
+	:return: (torch.LSTM) -> model
+			 (torch.optimizer) -> the optimizer
+			 (int) -> the current epoch
+	"""
+	
+	checkpoint = torch.load(checkpoint_fpath)
+	model.load_state_dict(checkpoint["model_state_dict"], strict=False)
+	optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
+	return model, optimizer, checkpoint["epoch"]
+
+def load_data(fpaths):
+	"""
+	Loads data.
+
+	:param fpaths: (list) -> filepaths
+
+	:return: (str) -> the corpus
+ 	"""
+
+	corpus = ""
+	for fp in fpaths:
+		with open(fp) as inp:
+			corpus += inp.read()
+
+	return corpus
 
 def preprocess(corpus):
 	"""
@@ -105,6 +132,7 @@ def prepare_sequence(seq, word_to_ix):
 
 def train(model, ngrams, n_epochs, word_to_ix):
 	model.train()
+	model = model.to(device)
 	loss_function = nn.NLLLoss()
 	optimizer = optim.SGD(model.parameters(), lr=0.1)
 	avg_loss = 0
@@ -114,8 +142,8 @@ def train(model, ngrams, n_epochs, word_to_ix):
 		for context, target in ngrams:
 			model.zero_grad()
 
-			context_in = prepare_sequence(context, word_to_ix)
-			target = prepare_sequence(target.split(), word_to_ix)
+			context_in = prepare_sequence(context, word_to_ix).to(device)
+			target = prepare_sequence(target.split(), word_to_ix).to(device)
 
 			candidate_scores = model(context_in)
 
@@ -124,6 +152,12 @@ def train(model, ngrams, n_epochs, word_to_ix):
 			optimizer.step()
 			avg_loss += loss.data.item()
 			i += 1
+		checkpoint = {
+			"epoch": epoch + 1,
+			"model_state_dict": model.state_dict(),
+			"optimizer_state_dict": optimizer.state_dict()
+		}
+		torch.save(checkpoint, "/home/output/models/unilstm.pt")
 		avg_loss /= i
 		print("Loss: " + str(avg_loss))
 		i = 0
@@ -131,9 +165,10 @@ def train(model, ngrams, n_epochs, word_to_ix):
 
 def write_story(model, primer, predict_len, temperature, word_to_ix, title):
 	model.eval()
+	model = model.to(device)
 	with torch.no_grad():
 		for i in range(predict_len):
-			inp = prepare_sequence(primer.split(), word_to_ix)[-2:] #last two words as input
+			inp = prepare_sequence(primer.split(), word_to_ix)[-2:].to(device) #last two words as input
 			word_scores = model(inp)
 
 			# sample from network as multinomial distribution
@@ -145,39 +180,26 @@ def write_story(model, primer, predict_len, temperature, word_to_ix, title):
 			primer += " " + predicted_word
 
 	# write story to file
-	with open("../output/stories/" + title + ".txt", 'w') as op:
+	with open("/home/output/stories/" + title + ".txt", 'w') as op:
 		op.write(primer)
 
 	return primer
 
 # loading and preprocessing
-data = load_data("../data/guide.pdf")
+train_fpaths = ["/home/data/train/hgg_train.txt", "/home/data/train/fish_train.txt", "/home/data/train/restaurant_train.txt",  "/home/data/train/timetravel_train.txt", "/home/data/train/worldwar_train.txt", "/home/data/train/universe_train.txt"]
+data = load_data(train_fpaths)
 corpus = preprocess(data)
-corpus = corpus[:80000]
-print(len(corpus))
 # encode vocabulary
 vocab = set(corpus)
 word_to_ix, ix_to_word = get_encoding_maps(vocab)
 
 trigrams = build_ngrams(corpus, n=3)
 model = LSTMGenerator(EMBEDDING_DIM, HIDDEN_DIM, len(vocab))
-train(model, trigrams, 20, word_to_ix)
-
-story = write_story(model, "the history of ", 1000, 0.8, word_to_ix, "hgg_spinoff")
+optimizer = optim.SGD(model.parameters(), lr=0.1)
+model, _, _= load_checkpoint("/home/output/models/unilstm.pt", model, optimizer)
+train(model, trigrams, 100, word_to_ix)
+story = write_story(model, "the history of ", predict_len=1000, temperature=0.8, word_to_ix=word_to_ix, title="hgg_spinoff")
 print(story)
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
