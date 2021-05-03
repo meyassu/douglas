@@ -2,8 +2,11 @@ name: voltaire
 channels:
   - defaults
   - conda-forge
+  - huggingface
 dependencies:
   - python=3.8
-  - tika
   - nltk
   - pytorch
+  - fasttext
+  - transformers
+  - pandas
