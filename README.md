@@ -1,24 +1,49 @@
 ## Voltaire
 
 ## Environment
-The project was built within an Anaconda environment, type this to collect the dependencies:
+The project was built within an Anaconda environment, we type this to collect the dependencies:
 
 ~~~
-conda env create --file=environment.yml
-conda activate voltaire
+$ conda env create --file=environment.yml
+$ conda activate voltaire
 ~~~
 
-The installed packages include tika which requires a Java runtime environment. For further information visit their Github page: https://github.com/chrismattmann/tika-python
+Then we build the FastText module:
+~~~
+$ cd data
+$ git clone https://github.com/facebookresearch/fastText.git
+$ cd fastText
+$ sudo pip install .
+$ # or :
+$ sudo python setup.py install
+~~~
+Then we verify the installation went well:
+~~~
+$ python
+Python 2.7.15 |(default, May  1 2018, 18:37:05)
+Type "help", "copyright", "credits" or "license" for more information.
+>>> import fasttext
+>>>
+~~~
+A clean return indicates a clean installation. All we have to do now is download the embeddings with this command within /fastText:
+~~~
+./download_model.py en
+~~~
+These and other instructions can be found at: https://fasttext.cc/docs/en/crawl-vectors.html
 
 To run the code, type:
 ~~~
 python3 voltaire.py
+python3 vonnegut.py
 ~~~
 
 ## Project Structure
 ~/data: the training data
+
 ~/docs: project milestone reports and other documentation
+
 ~/output: program output includes preprocessed data and written stories
+
 ~/src: the neural model
 
 ## Notes
@@ -27,4 +52,6 @@ Cool sci-fi autocomplete program: https://www.robinsloan.com/notes/writing-with-
 ## Resources:
 Kaggle: Beginner's Guide to Text Generation with Pytorch 
 (https://www.kaggle.com/ab971631/beginners-guide-to-text-generation-pytorch)
+Parallel CPU Data Generation and GPU Usage
+https://stanford.edu/~shervine/blog/pytorch-how-to-generate-data-parallel
 
