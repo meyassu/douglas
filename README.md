@@ -50,15 +50,19 @@ python3 vonnegut.py
 Cool sci-fi autocomplete program: https://www.robinsloan.com/notes/writing-with-the-machine/
 
 ## Citations:
-Kaggle: Beginner's Guide to Text Generation with Pytorch (nearly all the code from this notebook was used in this project)
+- Kaggle: Beginner's Guide to Text Generation with Pytorch (nearly all the code from this notebook was used in this project)
 (https://www.kaggle.com/ab971631/beginners-guide-to-text-generation-pytorch)
-Parallel CPU Data Generation and GPU Usage
+
+- Parallel CPU Data Generation and GPU Usage
 https://stanford.edu/~shervine/blog/pytorch-how-to-generate-data-parallel
-Computing Perplexity with HuggingFace Transformers Library
+
+- Computing Perplexity with HuggingFace Transformers Library
 https://huggingface.co/transformers/perplexity.html
-Fine-tuning GPT-2 Model (all the code from this notebook was used in this project)
+
+- Fine-tuning GPT-2 Model (all the code from this notebook was used in this project)
 Notebook: https://github.com/falloutdurham/beginners-pytorch-deep-learning/blob/master/chapter9/Chapter9.5.ipynb
 Blog page: https://snappishproductions.com/blog/2020/03/01/chapter-9.5-text-generation-with-gpt-2-and-only-pytorch.html.html
-Homework 3 (nearly all the code from the sample code from HW3 was used in this project)
+
+- Homework 3 (nearly all the code from the sample code from HW3 was used in this project)
 
 
