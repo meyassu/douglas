@@ -37,6 +37,8 @@ python3 voltaire.py
 python3 vonnegut.py
 ~~~
 
+voltaire.py is the uni-LSTM and vonnegut.py is the fine-tuning for GPT-2
+
 ## Project Structure
 ~/data: the training data
 
