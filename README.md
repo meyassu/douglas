@@ -61,9 +61,7 @@ https://stanford.edu/~shervine/blog/pytorch-how-to-generate-data-parallel
 - Computing Perplexity with HuggingFace Transformers Library
 https://huggingface.co/transformers/perplexity.html
 
-- Fine-tuning GPT-2 Model (all the code from this notebook was used in this project)
+- Fine-tuning GPT-2 Model
 https://github.com/falloutdurham/beginners-pytorch-deep-learning/blob/master/chapter9/Chapter9.5.ipynb
-
-- Homework 3 (nearly all the code from the sample code from HW3 was used in this project)
 
 
