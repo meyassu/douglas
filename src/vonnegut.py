@@ -1,236 +1,205 @@
-%pip install transformers
-import numpy as np
-import pandas as pd
-import random
+import re
+import nltk
+from nltk import sent_tokenize, word_tokenize
+from nltk.stem import PorterStemmer
+from nltk.corpus import stopwords
 import torch
-# import fire
-import logging
-import os
-import csv
-from torch.utils.data import Dataset, DataLoader
-from transformers import GPT2Tokenizer, GPT2LMHeadModel, AdamW, get_linear_schedule_with_warmup
-from tqdm import tqdm, trange
+import torch.nn as nn
 import torch.nn.functional as F
-import google.colab
-from google.colab import drive
+import torch.optim as optim
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print(device)
-drive.mount('/content/gdrive')
+# Hyperparameters
+torch.manual_seed(42)
+EMBEDDING_DIM = 64
+HIDDEN_DIM = 64
+# LAYERS = ?
 
-class Books(Dataset):
+def load_checkpoint(checkpoint_fpath, model, optimizer):
+	"""
+	Loads checkpoint.
 
-	def __init__(self, control_code, truncate=False, gpt2_type="gpt2", max_length=768, train_fpaths=None):
+	:param checkpoint_fpath: (str) -> the filepath to the checkpoint
+	:param model: (torch.LSTM) -> the model
+	:param optimizer: (torch.optimizer) -> the optimizer
 
-		self.tokenizer = GPT2Tokenizer.from_pretrained(gpt2_type)
-		self.sentences = []
-
-		for fp in train_fpaths:
-			with open(fp) as inp:
-				sentences = inp.readlines()
-				for sent in sentences:
-					encoding = torch.tensor(self.tokenizer.encode(f"<|{control_code}|>{sent[:max_length]}<|endoftext|>"))
-					self.sentences.append(encoding)
-		if truncate:
-			self.sentences = self.sentences[:20000]
-		self.sentence_count = len(self.sentences)
-
-	def __len__(self):
-		return self.sentence_count
-
-	def __getitem__(self, item):
-		return self.sentences[item]
-
-
-def pack_tensor(new_tensor, packed_tensor, max_seq_len):
-	if packed_tensor is None:
-		return new_tensor, True, None
-	if new_tensor.size()[1] + packed_tensor.size()[1] > max_seq_len:
-		return packed_tensor, False, new_tensor
-	else:
-		packed_tensor = torch.cat([new_tensor, packed_tensor[:, 1:]], dim=1)
-		return packed_tensor, True, None
-
-def train(
-	dataset,
-	model,
-	tokenizer,
-	batch_size=16,
-	epochs=4,
-	lr=2e-5,
-	max_seq_len=400,
-	warmup_steps=5000,
-	gpt2_type="gpt2",
-	device=device,
-	output_dir=".",
-	output_prefix="wreckgar",
-	test_mode=False,
-	save_model_on_epoch=False,
-	):
-
-	acc_steps = 100
-
-	model = model.to(device)
-	model.train()
-
-	optimizer = AdamW(model.parameters(), lr=lr)
-	scheduler = get_linear_schedule_with_warmup(
-	    optimizer, num_warmup_steps=warmup_steps, num_training_steps=-1
-	)
-
-	train_dataloader = DataLoader(dataset, batch_size=1, shuffle=True)
-
-	accumulating_batch_count = 0
-	input_tensor = None
-
-	for epoch in range(epochs):
-		print(f"Training epoch {epoch}")
-		for idx, entry in tqdm(enumerate(train_dataloader)):
-			(input_tensor, carry_on, remainder) = pack_tensor(entry, input_tensor, 768)
-
-			if carry_on and idx != len(train_dataloader) - 1:
-				continue
-
-			input_tensor = input_tensor.to(device)
-			outputs = model(input_tensor, labels=input_tensor)
-			loss = outputs[0]
-			loss.backward()
-			
-			if (accumulating_batch_count % batch_size) == 0:
-				optimizer.step()
-				scheduler.step()
-				optimizer.zero_grad()
-				model.zero_grad()
-
-			accumulating_batch_count += 1
-			input_tensor = None
-		if save_model_on_epoch:
-			torch.save(
-				model.state_dict(),
-				os.path.join(output_dir, f"{output_prefix}-{epoch}.pt"),
-			)
-		print(os.path.join(output_dir, f"{output_prefix}-{epoch}.pt"))
-		quit()
-		%cp "/home/output/models/spinoff-" + str(epoch) + ".pt" "gdrive/My Drive/gpt-2.pt"
+	:return: (torch.LSTM) -> model
+			 (torch.optimizer) -> the optimizer
+			 (int) -> the current epoch
+	"""
 	
-	return model
+	checkpoint = torch.load(checkpoint_fpath)
+	model.load_state_dict(checkpoint["model_state_dict"], strict=False)
+	optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
+	return model, optimizer, checkpoint["epoch"]
 
-def generate(
-	model,
-	tokenizer,
-	prompt,
-	entry_count=10,
-	entry_length=100,
-	top_p=0.8,
-	temperature=1.,
-):
+def load_data(fpaths):
+	"""
+	Loads data.
 
+	:param fpaths: (list) -> filepaths
+
+	:return: (str) -> the corpus
+ 	"""
+
+	corpus = ""
+	for fp in fpaths:
+		with open(fp) as inp:
+			corpus += inp.read()
+
+	return corpus
+
+def preprocess(corpus):
+	"""
+	Basic preprocessing operations:
+	- extraneous symbol removal
+	- lowercasing
+	- word tokenizing
+	"""
+
+	corpus = re.sub(r'<\w+ \/?>', ' ', corpus) # html tags
+	corpus = re.sub(r'[!"$%&\\/()*,.:;<=>?@\[\]^_{}|~`\\]', ' ', corpus) #punct
+	corpus = re.sub(r'\d+',' ', corpus) # numbers
+	corpus = re.sub(r'\\xa0', ' ', corpus) # xa0
+	corpus = re.sub(r'\n', ' ', corpus) # newlines
+	corpus = re.sub(r'-(?=[a-z])', ' ', corpus) # hyphenated words
+	corpus = re.sub(r'-', ' ', corpus) # random dashes
+	# expand contractions
+	corpus = re.sub(r"n\'t", " not", corpus)
+	corpus = re.sub(r"\'re", " are", corpus)
+	corpus = re.sub(r"\'s", " is", corpus)
+	corpus = re.sub(r"\'d", " would", corpus)
+	corpus = re.sub(r"\'ll", " will", corpus)
+	corpus = re.sub(r"\'t", " not", corpus)
+	corpus = re.sub(r"\'ve", " have", corpus)
+	corpus = re.sub(r"\'m", " am", corpus)
+	corpus = re.sub(r'\s+', ' ', corpus) # excess spaces
+	corpus = corpus.lower().strip() # lowercase/strip
+
+	return word_tokenize(corpus)
+
+def get_encoding_maps(vocab):
+	"""
+	Encode vocabulary
+	"""
+
+	word_to_ix = {}
+	ix_to_word = {}
+
+	for word in vocab:
+		if word not in word_to_ix:
+			word_to_ix[word] = len(word_to_ix)
+			ix_to_word[word_to_ix[word]] = word
+
+	return word_to_ix, ix_to_word
+
+def build_ngrams(corpus, n):
+	"""
+	Builds an ngram set of the form [([context....], target), ([context....], target)....]
+	where n > 1
+	"""
+
+	return [([corpus[i], corpus[i + (n - 2)]], corpus[i + (n - 1)]) for i in range(len(corpus) - (n - 1))]
+
+class LSTMGenerator(nn.Module):
+
+	def __init__(self, embedding_dim, hidden_dim, vocab_size, n_layers=1):
+		super(LSTMGenerator, self).__init__()
+		self.embedding_dim = embedding_dim
+		self.hidden_dim = hidden_dim
+		self.vocab_size = vocab_size
+		self.n_layers = n_layers
+
+		self.word_embeddings = nn.Embedding(vocab_size, embedding_dim)
+
+		self.lstm = nn.LSTM(embedding_dim, hidden_dim)
+
+		self.hidden2word = nn.Linear(hidden_dim, vocab_size)
+
+	def forward(self, context):
+		embeds = self.word_embeddings(context)
+		lstm_out, _ = self.lstm(embeds.view(len(context), 1, -1))
+		# project to output space
+		word_space = self.hidden2word(lstm_out.view(len(context), -1))
+		word_space = torch.reshape(word_space[-1], (1, self.vocab_size))
+		word_scores = F.log_softmax(word_space, dim=1)
+
+		return word_scores
+
+def prepare_sequence(seq, word_to_ix):
+	idxs = [word_to_ix[w] for w in seq]
+	return torch.tensor(idxs, dtype=torch.long)
+
+def train(model, ngrams, n_epochs, word_to_ix):
+	model.train()
+	model = model.to(device)
+	loss_function = nn.NLLLoss()
+	optimizer = optim.SGD(model.parameters(), lr=0.1)
+	avg_loss = 0
+	i = 0
+	for epoch in range(n_epochs):
+		print(f"Starting epoch {epoch}...")
+		for context, target in ngrams:
+			model.zero_grad()
+
+			context_in = prepare_sequence(context, word_to_ix).to(device)
+			target = prepare_sequence(target.split(), word_to_ix).to(device)
+
+			candidate_scores = model(context_in)
+
+			loss = loss_function(candidate_scores, target)
+			loss.backward()
+			optimizer.step()
+			avg_loss += loss.data.item()
+			i += 1
+		checkpoint = {
+			"epoch": epoch + 1,
+			"model_state_dict": model.state_dict(),
+			"optimizer_state_dict": optimizer.state_dict()
+		}
+		torch.save(checkpoint, "/home/output/models/unilstm.pt")
+		avg_loss /= i
+		print("Loss: " + str(avg_loss))
+		i = 0
+		avg_loss = 0
+
+def write_story(model, primer, predict_len, temperature, word_to_ix, title):
 	model.eval()
-
-	generated_num = 0
-	generated_list = []
-
-	filter_value = -float("Inf")
-
+	model = model.to(device)
 	with torch.no_grad():
+		for i in range(predict_len):
+			inp = prepare_sequence(primer.split(), word_to_ix)[-2:].to(device) #last two words as input
+			word_scores = model(inp)
 
-		for entry_idx in trange(entry_count):
+			# sample from network as multinomial distribution
+			word_scores_dist = word_scores.data.view(-1).div(temperature).exp()
+			top_i = torch.multinomial(word_scores_dist, 1)[0]
 
-			entry_finished = False
+			# Add predicted word to corpus and use as next input
+			predicted_word = list(word_to_ix.keys())[list(word_to_ix.values()).index(top_i)]
+			primer += " " + predicted_word
 
-			generated = torch.tensor(tokenizer.encode(prompt)).unsqueeze(0)
+	# write story to file
+	with open("/home/output/stories/" + title + ".txt", 'w') as op:
+		op.write(primer)
 
-			# Using top-p (nucleus sampling): https://github.com/huggingface/transformers/blob/master/examples/run_generation.py
+	return primer
 
-			for i in range(entry_length):
-				outputs = model(generated, labels=generated)
-				loss, logits = outputs[:2]
-				logits = logits[:, -1, :] / (temperature if temperature > 0 else 1.0)
+# loading and preprocessing
+train_fpaths = ["/home/data/train/hgg_train.txt", "/home/data/train/fish_train.txt", "/home/data/train/restaurant_train.txt",  "/home/data/train/timetravel_train.txt", "/home/data/train/worldwar_train.txt", "/home/data/train/universe_train.txt"]
+data = load_data(train_fpaths)
+corpus = preprocess(data)
+# encode vocabulary
+vocab = set(corpus)
+word_to_ix, ix_to_word = get_encoding_maps(vocab)
 
-				sorted_logits, sorted_indices = torch.sort(logits, descending=True)
-				cumulative_probs = torch.cumsum(F.softmax(sorted_logits, dim=-1), dim=-1)
-
-				sorted_indices_to_remove = cumulative_probs > top_p
-				sorted_indices_to_remove[..., 1:] = sorted_indices_to_remove[
-				    ..., :-1
-				].clone()
-				sorted_indices_to_remove[..., 0] = 0
-
-				indices_to_remove = sorted_indices[sorted_indices_to_remove]
-				logits[:, indices_to_remove] = filter_value
-
-				next_token = torch.multinomial(F.softmax(logits, dim=-1), num_samples=1)
-				generated = torch.cat((generated, next_token), dim=1)
-
-				if next_token in tokenizer.encode("<|endoftext|>"):
-					entry_finished = True
-
-				if entry_finished:
-
-					generated_num = generated_num + 1
-
-					output_list = list(generated.squeeze().numpy())
-					output_text = tokenizer.decode(output_list)
-
-					generated_list.append(output_text)
-					break
-	        
-			if not entry_finished:
-				output_list = list(generated.squeeze().numpy())
-				output_text = f"{tokenizer.decode(output_list)}<|endoftext|>" 
-				generated_list.append(output_text)
-	            
-	return generated_list
-
-def compute_perplexity(model, test_fpath):
-
-  tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
-  test = load_dataset('wikitext', 'wikitext-2-raw-v1', split='test')
-
-  encodings = tokenizer('\n\n'.join(test['text']), return_tensors='pt')
-  
-  max_length = model.config.n_positions
-  stride = 512
-
-  lls = []
-  for i in tqdm(range(0, encodings.input_ids.size(1), stride)):
-      begin_loc = max(i + stride - max_length, 0)
-      end_loc = min(i + stride, encodings.input_ids.size(1))
-      trg_len = end_loc - i    # may be different from stride on last loop
-      input_ids = encodings.input_ids[:,begin_loc:end_loc].to(device)
-      target_ids = input_ids.clone()
-      target_ids[:,:-trg_len] = -100
-
-      with torch.no_grad():
-          outputs = model(input_ids, labels=target_ids)
-          log_likelihood = outputs[0] * trg_len
-
-      lls.append(log_likelihood)
-
-  ppl = torch.exp(torch.stack(lls).sum() / end_loc)
+trigrams = build_ngrams(corpus, n=3)
+model = LSTMGenerator(EMBEDDING_DIM, HIDDEN_DIM, len(vocab))
+optimizer = optim.SGD(model.parameters(), lr=0.1)
+model, _, _= load_checkpoint("/home/output/models/unilstm.pt", model, optimizer)
+train(model, trigrams, 100, word_to_ix)
+story = write_story(model, "the history of ", predict_len=1000, temperature=0.8, word_to_ix=word_to_ix, title="hgg_spinoff")
+print(story)
 
 
-train_fpaths = ["/home/data/train/hgg_train.txt", "/home/data/train/fish_train.txt", "/home/data/train/restaurant_train.txt", "/home/data/train/timetravel_train.txt", "/home/data/train/worldwar_train.txt", "/home/data/train/universe_train.txt"]
-dataset = Books("<|sentence|>", truncate=False, gpt2_type="gpt2", train_fpaths=train_fpaths)
-gpt2_type = "gpt2"
 
-
-model = train(
-    dataset,
-    GPT2LMHeadModel.from_pretrained(gpt2_type),
-    GPT2Tokenizer.from_pretrained(gpt2_type),
-    batch_size=16,
-    epochs=10,
-    lr=3e-5,
-    max_seq_len=140,
-    warmup_steps=5000,
-    gpt2_type=gpt2_type,
-    device=device,
-    output_dir="/home/output/models/",
-    output_prefix="spinoff",
-    save_model_on_epoch=True
-)
-
-story = generate(model.to("cpu"), GPT2Tokenizer.from_pretrained(gpt2_type),"<|sentence|>",entry_count=100)
-for i, sentence in enumerate(story):
-	print("Sentence " + str(i) + ": ")
-	print(sentence)
