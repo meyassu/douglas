@@ -33,11 +33,11 @@ These and other instructions can be found at: https://fasttext.cc/docs/en/crawl-
 
 To run the code, type:
 ~~~
-python3 voltaire.py
 python3 vonnegut.py
+python3 gp2.py
 ~~~
 
-voltaire.py is the uni-LSTM and vonnegut.py is the fine-tuning for GPT-2
+vonnegut.py is the uni-LSTM and gpt2.py is the fine-tuning for GPT-2
 
 ## Project Structure
 ~/data: the training data
