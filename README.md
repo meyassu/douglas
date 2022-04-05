@@ -52,7 +52,7 @@ vonnegut.py is the uni-LSTM and gpt2.py is the fine-tuning for GPT-2
 Cool sci-fi autocomplete program: https://www.robinsloan.com/notes/writing-with-the-machine/
 
 ## Citations:
-- Kaggle: Beginner's Guide to Text Generation with Pytorch (nearly all the code from this notebook was used in this project)
+- Kaggle: Beginner's Guide to Text Generation with Pytorch
 (https://www.kaggle.com/ab971631/beginners-guide-to-text-generation-pytorch)
 
 - Parallel CPU Data Generation and GPU Usage
