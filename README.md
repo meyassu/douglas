@@ -1,14 +1,14 @@
-## Voltaire
+## Douglas
 
 ## Environment
-The project was built within an Anaconda environment, we type this to collect the dependencies:
+The project was built within an Anaconda environment. Type this to collect the dependencies:
 
 ~~~
 $ conda env create --file=environment.yml
 $ conda activate voltaire
 ~~~
 
-Then we build the FastText module:
+Then, build the FastText module:
 ~~~
 $ cd data
 $ git clone https://github.com/facebookresearch/fastText.git
@@ -17,7 +17,7 @@ $ sudo pip install .
 $ # or :
 $ sudo python setup.py install
 ~~~
-Then we verify the installation went well:
+Verify the installation went well:
 ~~~
 $ python
 Python 2.7.15 |(default, May  1 2018, 18:37:05)
@@ -25,7 +25,7 @@ Type "help", "copyright", "credits" or "license" for more information.
 >>> import fasttext
 >>>
 ~~~
-A clean return indicates a clean installation. All we have to do now is download the embeddings with this command within /fastText:
+A clean return indicates a clean installation. Now, download the embeddings with this command within /fastText:
 ~~~
 ./download_model.py en
 ~~~
