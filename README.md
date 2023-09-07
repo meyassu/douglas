@@ -33,7 +33,7 @@ These and other instructions can be found at: https://fasttext.cc/docs/en/crawl-
 
 To run the code, type:
 ~~~
-python3 vonnegut.py
+python3 douglas.py
 python3 gp2.py
 ~~~
 
