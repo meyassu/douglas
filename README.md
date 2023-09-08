@@ -14,7 +14,7 @@ These language models were trained to produce science-fiction text in the somewh
 The dataset is admittedly small and should be expanded. Currently, it consists of the following books: Life, the Universe, and Everything (Adams), So Long, and Thanks for All the Fish (Adams), The Hitchiker's Guide to the Galaxy (Adams), The Restaurant at the End of the Universe (Adams), andThe Time Machine (Wells). And Another Thing (Colfer) was the held-out test sample.
 
 ## Background
-NLG is currently performed with encoder-decoder sequence-to-sequence models equipped with attention capabilities. Usually, fine-tuning, a form of transfer learning is performed to bias the model towards a specific region of its phase space during inference.
+NLG is conventionally performed with encoder-decoder sequence-to-sequence models equipped with attention capabilities. Usually, fine-tuning, a form of transfer learning is performed to bias the model towards a specific region of its phase space during inference.
 
 ## Repository Contents
 - data/: the training data
