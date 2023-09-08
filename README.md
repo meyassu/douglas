@@ -21,7 +21,7 @@ Natural Language Generation (NLG) is conventionally performed with encoder-decod
 
 - docs/: project milestone reports and other documentation
 
-- output/ : program output includes preprocessed data and written stories
+- output/ : program output includes preprocessed data and previously written stories
 
 - src/: the neural model
 
