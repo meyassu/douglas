@@ -7,7 +7,7 @@
 - [Instructions](#instructions)
 
 ## Overview
-Large language models (LLMs) have taken the world by storm in recent years but they can be too computationally intensive to run locally with a CPU alone. The purpose of this repository is to allow those without significant compute resources to comfortably play with language models on their own machine. Transformer-based models now dominate NLP and such a mdoel is included here (fine-tuned GPT-2) but, to give users a glimpse into the past, a non-transformer-based model is also included (uni-LSTM n-gram model).
+Large language models (LLMs) have taken the world by storm in recent years but they can be too computationally intensive to run locally with a CPU alone. The purpose of this repository is to allow those without significant compute resources to comfortably play with language models on their own machine. Transformer-based models now dominate NLP and such a model is included here (fine-tuned GPT) but, to give users a glimpse into the past, a non-transformer-based model is also included (uni-LSTM n-gram model).
 
 These language models were trained to produce science-fiction text in the somewhat erratic and haphazard style of authors like Adams, Vonnegut, Colfer, and others. The rationale for this is that small language models with tiny context windows would probably struggle to reproduce complex plot structures with long threads of recurring ideas running through them (a-la Wells, Asimov, Bradbury) and would have an easier time writing something like The Hitchiker's Guide to the Galaxy, which reads like a fever dream. (At the same time, text from more conventional sci-fi books was included to give the LMs some idea of proper structure and story progression).
 
@@ -28,7 +28,7 @@ Natural Language Generation (NLG) is conventionally performed with encoder-decod
 ## Notes
 This project initially also included a bidirectional LSTM (bi-LSTM) which traverses tokens in both forwards / backwards direction during training, but it surprisingly failed to perform as well as the uni-LSTM. 
 
-Also, GPT-2 excelled in terms of grammar and semantics but fell short in its ability to produce novel or relevant sentences. This is likely because the additional training set had minimal impact on the existing parameters of the network (likely due to low learning rate distributed over entire network). Next time, maybe it would be better to freeze the early layers of GPT-2 and then increase the learning rate to a normal value for the later layers to nudge the model towards writing more relevant / creative sentences. 
+Also, GPT excelled in terms of grammar and semantics but fell short in its ability to produce novel or relevant sentences. This is likely because the additional training set had minimal impact on the existing parameters of the network (likely due to low learning rate distributed over entire network). Next time, maybe it would be better to freeze the early layers of GPT-2 and then increase the learning rate to a normal value for the later layers to nudge the model towards writing more relevant / creative sentences. 
 
 (Cool sci-fi autocomplete program: https://www.robinsloan.com/notes/writing-with-the-machine/)
 
